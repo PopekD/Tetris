@@ -6,9 +6,14 @@
 
 class Tile {
 
-private:
+protected:
 	sf::RectangleShape tile;
+	sf::RectangleShape lastLanded;
+	std::vector<std::vector<sf::Color>> colorMap;
 public:
 	Tile();
+	void updateMap(std::vector<std::vector<int>>& shape, int posX, int posY, sf::Color color);
 	void drawTiles(sf::RenderWindow& window);
+	void checkMap();
+	std::vector<std::vector<sf::Color>> getColorMap();
 };

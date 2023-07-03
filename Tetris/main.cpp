@@ -36,6 +36,10 @@ int main()
                 {
                     tetromino->moveDown(colorMap);
                 }
+                else if (event.key.code == sf::Keyboard::Z)
+                {
+                    tetromino->rotate(colorMap);
+                }
             }
         }
 
@@ -48,7 +52,7 @@ int main()
 
         if (elapsedSeconds >= MOVE_INTERVAL)
         {
-            if (!tetromino->checkColisions(colorMap)) {
+            if (!tetromino->checkCollisions(colorMap)) {
 
                 std::vector<std::vector<int>> shape = tetromino->getShape();
                 int posX = tetromino->getPosX();

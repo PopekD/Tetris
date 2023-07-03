@@ -34,7 +34,7 @@ void Figures::moveFigures() {
 	setPosY(int(posY += TILE_SIZE));
 }
 
-bool Figures::checkColisions(std::vector<std::vector<sf::Color>>& colorMap)
+bool Figures::checkCollisions(std::vector<std::vector<sf::Color>>& colorMap)
 {
 
 	if (maxY + TILE_SIZE > bottomBoundary)
@@ -143,6 +143,81 @@ void Figures::moveDown(std::vector<std::vector<sf::Color>>& colorMap)
 
 	setPosY(int(posY + TILE_SIZE));
 }
+
+void Figures::rotate(std::vector<std::vector<sf::Color>>& colorMap)
+{
+	// Create a copy of the shape for testing the rotated position
+	std::vector<std::vector<int>> rotatedShape = shape;
+
+	// Get the next rotation state
+	RotationState nextRotationState;
+
+	// Determine the next rotation state based on the current rotation state
+	switch (rotationState)
+	{
+	case RotationState::Deg0:
+		nextRotationState = RotationState::Deg90;
+		break;
+	case RotationState::Deg90:
+		nextRotationState = RotationState::Deg180;
+		break;
+	case RotationState::Deg180:
+		nextRotationState = RotationState::Deg270;
+		break;
+	case RotationState::Deg270:
+		nextRotationState = RotationState::Deg0;
+		break;
+	}
+
+
+	// Find the corresponding rotated shape for the next rotation state
+	std::vector<std::vector<int>> nextRotatedShape;
+
+	for (const Figures& figure : Tetrominos)
+	{
+		if (figure.type == type && figure.rotationState == nextRotationState)
+		{
+			nextRotatedShape = figure.shape;
+			break;
+		}
+	}
+
+	for (int i = 0; i < nextRotatedShape.size(); i++)
+	{
+		for (int j = 0; j < nextRotatedShape[i].size(); j++)
+		{
+			if (nextRotatedShape[i][j] == 1)
+			{
+				int mapX = (posX / TILE_SIZE) + i;
+				int mapY = (posY / TILE_SIZE) + j;
+				maxY = std::max(maxY, int(posY + j * TILE_SIZE));
+				if (mapX >= 0 && mapX < (WINDOW_WIDTH / TILE_SIZE) && mapY >= 0 && mapY < colorMap.size())
+				{
+					if (colorMap[mapY][mapX] != sf::Color::Black)
+					{
+						return;
+					}
+				}
+				else
+				{
+					return;
+				}
+
+			}
+		}
+	}
+	if (maxY > bottomBoundary)
+	{
+		return;
+	}
+
+	// If no collision, update the shape and rotation state
+	shape = nextRotatedShape;
+	rotationState = nextRotationState;
+}
+
+
+
 
 void Figures::setPosY(int posY)
 {

@@ -1,10 +1,10 @@
 #pragma once
-#include "Figures.h"
+#include "Tile.h"
 
-class Game: private Figures {
+class Game {
 private:
 	int score;
-	float speed;
+	float time;
 public:
 	Game();
 	void clearRow();

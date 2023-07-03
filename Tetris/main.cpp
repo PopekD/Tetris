@@ -24,23 +24,18 @@ int main()
                 window.close();
             if (event.type == sf::Event::KeyPressed)
             {
-                // Handle keyboard inputs
                 if (event.key.code == sf::Keyboard::Left)
                 {
-                    // Move tetromino left
                     tetromino->moveLeft(colorMap);
                 }
                 else if (event.key.code == sf::Keyboard::Right)
                 {
-                    // Move tetromino right
                     tetromino->moveRight(colorMap);
                 }
                 else if (event.key.code == sf::Keyboard::Down)
                 {
-                    // Move tetromino down (faster)
                     tetromino->moveDown(colorMap);
                 }
-                // You can add more controls here if needed
             }
         }
 

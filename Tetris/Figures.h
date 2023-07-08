@@ -1,21 +1,19 @@
 #include <SFML/Graphics.hpp>
 #include "Tile.h"
 
+#define NEXTSIZE 25.0
+
 enum class FiguresType
 {
 	I,
 	L,
 	O,
 	S,
-	T
+	T,
+    J,
+    Z
 };
-enum class RotationState 
-{ 
-	Deg0, 
-	Deg90, 
-	Deg180, 
-	Deg270 
-};
+
 
 class Figures
 {
@@ -24,18 +22,34 @@ private:
 	std::vector<std::vector<int>> shape;
 	sf::Color color;
 	sf::RectangleShape tileShape;
+    sf::RectangleShape nextShape;
+    sf::RectangleShape ghostShape;
+    sf::RectangleShape inventoryShape;
+    static std::unique_ptr<Figures> inventoryTetromino;
 	int minX;
 	int maxX;
 	int maxY;
 	int minY;
+    int ghostPosition;
+    bool isSpaceKeyPressed;
+    static bool inventoryEmpty;
 	const int bottomBoundary = int(WINDOW_HEIGHT - TILE_SIZE);
-	RotationState rotationState = RotationState::Deg0;
+    public: int rotationState = 0;
+    static bool didCtrlClick;
+    
 protected:
 	int posX = (WINDOW_WIDTH / 2) - TILE_SIZE;
 	int posY = 0;
 public:
-	Figures(FiguresType figureType, sf::Color figureColor, std::vector<std::vector<int>> figureShape, RotationState initialRotationState)
+	Figures(FiguresType figureType, sf::Color figureColor, std::vector<std::vector<int>> figureShape, int initialRotationState)
 		: type(figureType), color(figureColor), shape(figureShape), rotationState(initialRotationState) {}
+    Figures(const Figures& other)
+        : type(other.type),
+        shape(other.shape),
+        color(other.color),
+        rotationState(other.rotationState)
+    {}
+
 	FiguresType getType() const {
 		return type;
 	}
@@ -55,99 +69,151 @@ public:
 	void moveLeft(std::vector<std::vector<sf::Color>>& colorMap);
 	void moveRight(std::vector<std::vector<sf::Color>>& colorMap);
 	void moveDown(std::vector<std::vector<sf::Color>>& colorMap);
-	void rotate(std::vector<std::vector<sf::Color>>& colorMap);
+	void rotate(std::vector<std::vector<sf::Color>>& colorMap, sf::Keyboard::Key key);
+    bool checkCollisionsAtSpawn(std::vector<std::vector<sf::Color>>& colorMap);
+    void drawNext(sf::RenderWindow& window, int next);
+    void drawGhost(sf::RenderWindow& window, std::vector<std::vector<sf::Color>>& colormap);
+    bool isValidPosition(int posY, const std::vector<std::vector<sf::Color>>& colormap);
+    int getGhostPosition();
+    void isSpacePressed(bool KeyPressed);
+    void swapTetrominos(std::unique_ptr<Figures>& tetromin, std::queue<int>& tetrominoQueue);
+    void drawInventory(sf::RenderWindow& window);
 };
 
 const std::vector<Figures> Tetrominos = {
-    Figures(FiguresType::I, sf::Color::Cyan, {
-        { 1, 1, 1 }
-    }, RotationState::Deg0),
-    Figures(FiguresType::I, sf::Color::Cyan, {
-        { 0, 1, 0},
-        { 0, 1, 0 },
-        { 0, 1, 0 }
-    }, RotationState::Deg90),
-    Figures(FiguresType::I, sf::Color::Cyan, {
-        { 1, 1, 1 }
-    }, RotationState::Deg180),
-    Figures(FiguresType::I, sf::Color::Cyan, {
-        { 0, 1, 0},
-        { 0, 1, 0 },
-        { 0, 1, 0 }
-    }, RotationState::Deg270),
 
+    Figures(FiguresType::I, sf::Color::Cyan, {
+        { 1, 1, 1, 1 }
+    }, 0),
+    Figures(FiguresType::I, sf::Color::Cyan, {
+        { 1},
+        { 1},
+        { 1},
+        { 1}
+    }, 1),
+   Figures(FiguresType::I, sf::Color::Cyan, {
+        { 1, 1, 1, 1 }
+    }, 2),
+    Figures(FiguresType::I, sf::Color::Cyan, {
+        { 1},
+        { 1},
+        { 1},
+        { 1}
+    }, 3),
+
+    Figures(FiguresType::L, sf::Color(255, 165, 0), {
+        { 1, 0},
+        { 1, 0},
+        { 1, 1},
+    }, 0),
     Figures(FiguresType::L, sf::Color(255, 165, 0), {
         { 0, 0, 1 },
-        { 1, 1, 1 }
-    }, RotationState::Deg0),
+        { 1, 1, 1 },
+    }, 1),
     Figures(FiguresType::L, sf::Color(255, 165, 0), {
-        { 1, 0 },
-        { 1, 0 },
-        { 1, 1 }
-    }, RotationState::Deg90),
+        { 1, 1},
+        { 0, 1},
+        { 0, 1}
+    }, 2),
     Figures(FiguresType::L, sf::Color(255, 165, 0), {
         { 1, 1, 1 },
-        { 1, 0, 0 }
-    }, RotationState::Deg180),
-    Figures(FiguresType::L, sf::Color(255, 165, 0), {
-        { 1, 1 },
-        { 0, 1 },
-        { 0, 1 }
-    }, RotationState::Deg270),
+        { 1, 0, 0 },
+    }, 3),
+
+    Figures(FiguresType::J, sf::Color::Green, {
+        { 1, 1},
+        { 1, 0},
+        { 1, 0},
+    }, 0),
+
+    Figures(FiguresType::J, sf::Color::Green, {
+        { 1, 0, 0 },
+        { 1, 1, 1 },
+    }, 1),
+    Figures(FiguresType::J, sf::Color::Green, {
+        { 0, 1},
+        { 0, 1},
+        { 1, 1}
+    }, 2),
+
+    Figures(FiguresType::J, sf::Color::Green, {
+        { 1, 1, 1 },
+        { 0, 0, 1 },
+    }, 3),
 
     Figures(FiguresType::O, sf::Color::Yellow, {
         { 1, 1 },
         { 1, 1 }
-    }, RotationState::Deg0),
+    }, 0),
     Figures(FiguresType::O, sf::Color::Yellow, {
         { 1, 1 },
         { 1, 1 }
-    }, RotationState::Deg90),
+    }, 1),
     Figures(FiguresType::O, sf::Color::Yellow, {
         { 1, 1 },
         { 1, 1 }
-    }, RotationState::Deg180),
+    }, 2),
     Figures(FiguresType::O, sf::Color::Yellow, {
         { 1, 1 },
         { 1, 1 }
-    }, RotationState::Deg270),
+    }, 3),
 
-    Figures(FiguresType::T, sf::Color(128, 0, 128), {
-        { 0, 1, 0 },
-        { 1, 1, 1 }
-    }, RotationState::Deg0),
     Figures(FiguresType::T, sf::Color(128, 0, 128), {
         { 1, 0 },
         { 1, 1 },
         { 1, 0 }
-    }, RotationState::Deg90),
+    }, 0),
     Figures(FiguresType::T, sf::Color(128, 0, 128), {
-        { 1, 1, 1 },
-        { 0, 1, 0 }
-    }, RotationState::Deg180),
+        { 0, 1, 0 },
+        { 1, 1, 1 }
+    }, 1),
     Figures(FiguresType::T, sf::Color(128, 0, 128), {
         { 0, 1 },
         { 1, 1 },
         { 0, 1 }
-    }, RotationState::Deg270),
+    }, 2),
+    Figures(FiguresType::T, sf::Color(128, 0, 128), {
+        { 1, 1, 1 },
+        { 0, 1, 0 }
+    }, 3),
+
     Figures(FiguresType::S, sf::Color::Red, {
         { 0, 1, 1 },
         { 1, 1, 0 }
-    }, RotationState::Deg0),
+    }, 0),
     Figures(FiguresType::S, sf::Color::Red, {
         { 1, 0 },
         { 1, 1 },
         { 0, 1 }
-    }, RotationState::Deg90),
+    }, 1),
         Figures(FiguresType::S, sf::Color::Red, {
+        { 0, 1, 1 },
+        { 1, 1, 0 }
+    }, 2),
+    Figures(FiguresType::S, sf::Color::Red, {
+        { 1, 0 },
+        { 1, 1 },
+        { 0, 1 }
+    }, 3),
+
+    Figures(FiguresType::Z, sf::Color::Blue, {
         { 1, 1, 0 },
         { 0, 1, 1 }
-    }, RotationState::Deg180),
-    Figures(FiguresType::S, sf::Color::Red, {
+    }, 0),
+    Figures(FiguresType::Z, sf::Color::Blue, {
         { 0, 1 },
         { 1, 1 },
         { 1, 0 }
-    }, RotationState::Deg270)
+    }, 1),
+    Figures(FiguresType::Z, sf::Color::Blue, {
+        { 1, 1, 0 },
+        { 0, 1, 1 }
+    }, 2),
+    Figures(FiguresType::Z, sf::Color::Blue, {
+        { 0, 1 },
+        { 1, 1 },
+        { 1, 0 }
+    }, 3)
 };
 
 

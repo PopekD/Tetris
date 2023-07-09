@@ -3,7 +3,7 @@
 
 A classic implementation of the popular puzzle game Tetris using C++ and SFML library.
 
-# Featues
+# Features
 
 
 - Intuitive controls: Use arrow keys to move tetrominoes left, right, and down, and A,D to rotate them to the left or right.
